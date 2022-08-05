@@ -26,10 +26,10 @@ import sttp.tapir.client.sttp.WebSocketToPipe
 
 import WebSocketToPipe.webSocketsNotSupported
 
-class ClientChecks[F[_]: MonadThrow](backend: SttpBackend[F, Any]) {
+class SimplifiedClientChecks[F[_]: MonadThrow](backend: SttpBackend[F, Any]) extends Checks[F] {
 
-  private val validClient = Client.instance("secret", backend)
-  private val invalidClient = Client.instance("invalid", backend)
+  private val validClient = SimplifiedClient.instance("secret", backend)
+  private val invalidClient = SimplifiedClient.instance("invalid", backend)
 
   val verifyInvalidToken =
     invalidClient
@@ -63,34 +63,35 @@ class ClientChecks[F[_]: MonadThrow](backend: SttpBackend[F, Any]) {
         println("Successfully verified valid user")
       }
 
+  val checklist = verifyInvalidToken *> verifyValidTokenInvalidUser *> verifyValidTokenValidUser
 }
 
-trait Client[F[_]] {
+trait SimplifiedClient[F[_]] {
   def getUserOrders(user: String): F[Option[List[Order]]]
 }
 
-object Client {
+object SimplifiedClient {
   def instance[F[_]: MonadThrow](
       token: String,
       backend: SttpBackend[F, Any]
-  ): Client[F] =
-    new Client[F] {
+  ): SimplifiedClient[F] =
+    new SimplifiedClient[F] {
       val sttpClient = SttpClientInterpreter()
 
       override def getUserOrders(user: String): F[Option[List[Order]]] = {
         val requestBuilder = sttpClient.toSecureRequest(
-          OrderEndpoints.validateClient,
+          SimplifiedEndpoints.validateClient,
           Some(uri"http://localhost:8080")
         )
         val request = requestBuilder(token)(user)
         val result = backend.send(request)
         result.map(_.body).flatMap {
-          case Value(Left(v: OrderEndpoints.model.Unauthorized)) =>
+          case Value(Left(v: SimplifiedEndpoints.model.Unauthorized)) =>
             MonadThrow[F].raiseError(new Exception(s"Error $v"))
           case Value(v) =>
             v.toOption.pure[F]
-          case _ =>
-            MonadThrow[F].raiseError(new Exception("failed to decode response"))
+          case result =>
+            MonadThrow[F].raiseError(new Exception(s"failed to decode response: $result"))
         }
       }
 

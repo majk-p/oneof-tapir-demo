@@ -19,6 +19,7 @@ package net.michalp.oneoftapirdemo
 import cats.effect.IO
 import cats.effect.IOApp
 import cats.effect._
+import cats.implicits._
 import sttp.client3.asynchttpclient.cats.AsyncHttpClientCatsBackend
 
 object Main extends IOApp {
@@ -27,10 +28,14 @@ object Main extends IOApp {
     for {
       client <- AsyncHttpClientCatsBackend[IO]()
       clientChecks = new ClientChecks[IO](client)
+      simplifiedClientChecks = new SimplifiedClientChecks[IO](client)
       result <- Server.resource
         .use { _ =>
-          Checks.verifyInvalidToken *> Checks.verifyValidTokenInvalidUser *> Checks.verifyValidTokenValidUser *>
-            clientChecks.verifyInvalidToken *> clientChecks.verifyValidTokenInvalidUser *> clientChecks.verifyValidTokenValidUser
+          (
+            Checks.checklist, 
+            clientChecks.checklist,
+            simplifiedClientChecks.checklist
+          ).parTupled.void
         }
         .as(ExitCode.Success)
     } yield result 

@@ -30,7 +30,8 @@ object Server {
   private val routes: HttpRoutes[IO] =
     Http4sServerInterpreter[IO]().toRoutes(
       List(
-        new OrderRoutes[IO]().validate
+        new OrderRoutes[IO]().validate,
+        new SimplifiedOrderRoutes[IO]().validate
       )
     )
 

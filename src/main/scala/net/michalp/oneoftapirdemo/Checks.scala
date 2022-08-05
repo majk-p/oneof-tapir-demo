@@ -20,7 +20,11 @@ import cats.effect.IO
 import eu.timepit.refined.auto._
 import sttp.client3._
 
-object Checks {
+trait Checks[F[_]] {
+  def checklist: F[Unit]
+}
+
+object Checks extends Checks[IO]{
   private val backend: SttpBackend[Identity, Any] = HttpURLConnectionBackend()
 
   private val baseUri = uri"http://localhost:8080/validate"
@@ -62,5 +66,7 @@ object Checks {
     assert(result.code.code == 200)
     println("Successfully verified valid user")
   }
+
+  val checklist = verifyInvalidToken *> verifyValidTokenInvalidUser *> verifyValidTokenValidUser
 
 }

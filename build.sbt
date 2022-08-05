@@ -27,7 +27,7 @@ lazy val Versions = new {
 }
 
 lazy val root = project
-  .in(file("core"))
+  .in(file("."))
   .settings(
     name := "oneof-tapir-demo",
     libraryDependencies ++= Seq(
