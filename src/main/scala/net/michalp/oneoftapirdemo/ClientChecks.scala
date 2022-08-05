@@ -43,7 +43,7 @@ class ClientChecks[F[_]: MonadThrow](backend: SttpBackend[F, Any], validationRou
         println("Successfully verified invalid token")
       }
 
-  val verifyValidTokenInvalidUser =
+  val verifyValidTokenInvalidOrder =
     validClient
       .getOrder("999999")
       .attempt
@@ -54,7 +54,7 @@ class ClientChecks[F[_]: MonadThrow](backend: SttpBackend[F, Any], validationRou
         println("Successfully verified invalid user")
       }
 
-  val verifyValidTokenValidUser =
+  val verifyValidTokenAndOrder =
     validClient
       .getOrder("1")
       .attempt
@@ -65,7 +65,7 @@ class ClientChecks[F[_]: MonadThrow](backend: SttpBackend[F, Any], validationRou
         println("Successfully verified valid user")
       }
 
-  val checklist = verifyInvalidToken *> verifyValidTokenInvalidUser *> verifyValidTokenValidUser
+  val checklist = verifyInvalidToken *> verifyValidTokenInvalidOrder *> verifyValidTokenAndOrder
 }
 
 trait Client[F[_]] {

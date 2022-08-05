@@ -43,7 +43,7 @@ object Checks extends Checks[IO]{
     println("Successfully verified invalid token")
   }
 
-  val verifyValidTokenInvalidUser = IO {
+  val verifyValidTokenInvalidOrder = IO {
     val result = 
       request
         .auth
@@ -55,7 +55,7 @@ object Checks extends Checks[IO]{
     println("Successfully verified invalid user")
   }
 
-  val verifyValidTokenValidUser = IO {
+  val verifyValidTokenAndOrder = IO {
     val result = 
       request
         .auth
@@ -67,6 +67,6 @@ object Checks extends Checks[IO]{
     println("Successfully verified valid user")
   }
 
-  val checklist = verifyInvalidToken *> verifyValidTokenInvalidUser *> verifyValidTokenValidUser
+  val checklist = verifyInvalidToken *> verifyValidTokenInvalidOrder *> verifyValidTokenAndOrder
 
 }
