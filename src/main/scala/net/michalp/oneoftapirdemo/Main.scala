@@ -21,21 +21,30 @@ import cats.effect.IOApp
 import cats.effect._
 import cats.implicits._
 import sttp.client3.asynchttpclient.cats.AsyncHttpClientCatsBackend
+import sttp.client3.SttpBackend
 
 object Main extends IOApp {
 
+  private val separator = IO.println("="*20)
+
+  private val basicTest: IO[Unit] = separator *> IO.println("basic checks") *> Checks.checklist
+
+  private def testWhereClientAndServerUseTheSameEndpointDefinition(backend: SttpBackend[IO, Any]) = 
+    separator *>
+      IO.println("client checks where client uses server endpoint definition") *>
+      new ClientChecks[IO](backend, OrderEndpoints.validateServer).checklist
+
+  private def testWhereClientUsesSimplifiedDefinition(backend: SttpBackend[IO, Any]) = 
+    separator *>
+      IO.println("client checks where client uses client specific endpoint definition") *>
+      new ClientChecks[IO](backend, OrderEndpoints.validateClient).checklist
+  
   override def run(args: List[String]): IO[ExitCode] = {
     for {
       client <- AsyncHttpClientCatsBackend[IO]()
-      clientChecks = new ClientChecks[IO](client)
-      simplifiedClientChecks = new SimplifiedClientChecks[IO](client)
       result <- Server.resource
         .use { _ =>
-          (
-            Checks.checklist, 
-            clientChecks.checklist,
-            simplifiedClientChecks.checklist
-          ).parTupled.void
+          basicTest *> testWhereClientAndServerUseTheSameEndpointDefinition(client) *> testWhereClientUsesSimplifiedDefinition(client)
         }
         .as(ExitCode.Success)
     } yield result 

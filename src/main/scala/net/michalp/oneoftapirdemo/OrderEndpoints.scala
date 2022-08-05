@@ -28,18 +28,21 @@ object OrderEndpoints {
   import model._
 
   val validateClient
-      : Endpoint[String, String, Failure[NotFound.type], List[Order], Any] =
+      : Endpoint[String, String, Error, List[Order], Any] =
     endpoint.get
       .securityIn(auth.bearer[String]())
       .in("validate")
       .in(path[String]("user"))
       .out(jsonBody[List[Order]])
       .errorOut(
-        oneOf(notFoundStatus, unauthorized)
+        oneOf(
+          notFoundStatus, // This seems to be wha'ts causing the issue
+          unauthorized
+        )
       )
 
   val validateServer
-      : Endpoint[String, String, Failure[NotFound.type], List[Order], Any] =
+      : Endpoint[String, String, Error, List[Order], Any] =
     endpoint.get
       .securityIn(auth.bearer[String]())
       .in("validate")
@@ -54,55 +57,45 @@ object OrderEndpoints {
     val notFoundEmpty =
       oneOfVariantValueMatcher(
         StatusCode.NotFound,
-        emptyOutputAs[Failure[NotFound.type]](BusinessFailure(NotFound))
-      ) { case BusinessFailure(NotFound) => true }
+        emptyOutputAs[Error](NotFound)
+      ) { case NotFound => true }
 
     val notFoundStatus =
       oneOfVariantValueMatcher(
-        statusCode(StatusCode.NotFound).map(_ => BusinessFailure(NotFound))(_ => ())
-      ) { case BusinessFailure(NotFound) => true }
+        // If the status matches it's good enough, we don't care about the body and headers
+        statusCode(StatusCode.NotFound).map(_ => NotFound)(_ => ())
+      ) { case NotFound => true }
 
     val notFoundJson =
       oneOfVariantValueMatcher(
         StatusCode.NotFound,
-        jsonBody[Unit].map(_ => BusinessFailure(NotFound))(_ => ())
-      ) { case BusinessFailure(NotFound) => true }
+        jsonBody[Unit].map(_ => NotFound)(_ => ())
+      ) { case NotFound => true }
 
-    final case object NotFound {
-      implicit val codec: io.circe.Codec[NotFound.type] =
-        deriveCodec[NotFound.type]
+    sealed trait Error extends Product with Serializable
+
+    object Error {
+      implicit def codec: Codec[Error] = deriveCodec
+    }
+    
+    final case object NotFound extends Error {
+      implicit val codec: Codec[NotFound.type] =
+        deriveCodec
     }
 
-    sealed trait Failure[+E] extends Product with Serializable
-
-    object Failure {
-      implicit def codec[E: Codec]: Codec[Failure[E]] = deriveCodec
-    }
-
-    sealed trait SecurityFailure extends Failure[Nothing]
-    object SecurityFailure {
-      implicit def codec: Codec[SecurityFailure] = deriveCodec
-    }
-
-    final case class Unauthorized(message: String) extends SecurityFailure
+    final case class Unauthorized(message: String) extends Error
 
     object Unauthorized {
       implicit val codec: Codec[Unauthorized] = deriveCodec
     }
 
-    def unauthorized: EndpointOutput.OneOfVariant[SecurityFailure] =
+    def unauthorized: EndpointOutput.OneOfVariant[Error] =
       oneOfVariantValueMatcher(
         StatusCode.Forbidden,
-        jsonBody[SecurityFailure].example(
+        jsonBody[Error].example(
           Unauthorized("You are not authorized")
         )
       ) { case _: Unauthorized => true }
-
-    final case class BusinessFailure[+E](source: E) extends Failure[E]
-
-    object BusinessFailure {
-      implicit def codec[E: Codec]: Codec[BusinessFailure[E]] = deriveCodec
-    }
 
   }
 

@@ -25,11 +25,12 @@ import sttp.tapir.client.sttp.SttpClientInterpreter
 import sttp.tapir.client.sttp.WebSocketToPipe
 
 import WebSocketToPipe.webSocketsNotSupported
+import sttp.tapir.Endpoint
 
-class ClientChecks[F[_]: MonadThrow](backend: SttpBackend[F, Any]) extends Checks[F] {
+class ClientChecks[F[_]: MonadThrow](backend: SttpBackend[F, Any], validationRoute: Endpoint[String, String, OrderEndpoints.model.Error, List[Order], Any]) extends Checks[F] {
 
-  private val validClient = Client.instance("secret", backend)
-  private val invalidClient = Client.instance("invalid", backend)
+  private val validClient = Client.instance("secret", backend)(validationRoute)
+  private val invalidClient = Client.instance("invalid", backend)(validationRoute)
 
   val verifyInvalidToken =
     invalidClient
@@ -62,7 +63,7 @@ class ClientChecks[F[_]: MonadThrow](backend: SttpBackend[F, Any]) extends Check
         assert(result == Right(Some(List(Order("1"), Order("2")))))
         println("Successfully verified valid user")
       }
-  
+
   val checklist = verifyInvalidToken *> verifyValidTokenInvalidUser *> verifyValidTokenValidUser
 }
 
@@ -72,15 +73,17 @@ trait Client[F[_]] {
 
 object Client {
   def instance[F[_]: MonadThrow](
-      token: String,
-      backend: SttpBackend[F, Any]
+    token: String,
+    backend: SttpBackend[F, Any]
+  )(
+    validationRoute: Endpoint[String, String, OrderEndpoints.model.Error, List[Order], Any]
   ): Client[F] =
     new Client[F] {
       val sttpClient = SttpClientInterpreter()
 
       override def getUserOrders(user: String): F[Option[List[Order]]] = {
         val requestBuilder = sttpClient.toSecureRequest(
-          OrderEndpoints.validateClient,
+          validationRoute,
           Some(uri"http://localhost:8080")
         )
         val request = requestBuilder(token)(user)
