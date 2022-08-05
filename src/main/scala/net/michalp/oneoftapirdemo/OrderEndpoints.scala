@@ -27,30 +27,33 @@ object OrderEndpoints {
 
   import model._
 
-  val validateClient
-      : Endpoint[String, String, Error, Order, Any] =
-    endpoint.get
-      .securityIn(auth.bearer[String]())
-      .in("order")
-      .in(path[String]("id"))
-      .out(jsonBody[Order])
-      .errorOut(
-        oneOf(
-          notFoundStatus, // This seems to be wha'ts causing the issue
-          unauthorized
+  object Server {
+    val findOrder: Endpoint[String, String, Error, Order, Any] =
+      endpoint.get
+        .securityIn(auth.bearer[String]())
+        .in("order")
+        .in(path[String]("id"))
+        .out(jsonBody[Order])
+        .errorOut(
+          oneOf(notFoundJson, unauthorized)
         )
-      )
+  }
+  
+  object Client {
+    val findOrder: Endpoint[String, String, Error, Order, Any] =
+      endpoint.get
+        .securityIn(auth.bearer[String]())
+        .in("order")
+        .in(path[String]("id"))
+        .out(jsonBody[Order])
+        .errorOut(
+          oneOf(
+            notFoundStatus, // This seems to be wha'ts causing the issue
+            unauthorized
+          )
+        )
+  }
 
-  val validateServer
-      : Endpoint[String, String, Error, Order, Any] =
-    endpoint.get
-      .securityIn(auth.bearer[String]())
-      .in("order")
-      .in(path[String]("id"))
-      .out(jsonBody[Order])
-      .errorOut(
-        oneOf(notFoundJson, unauthorized)
-      )
 
   object model {
 

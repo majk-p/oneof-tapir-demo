@@ -32,12 +32,12 @@ object Main extends IOApp {
   private def testWhereClientAndServerUseTheSameEndpointDefinition(backend: SttpBackend[IO, Any]) = 
     separator *>
       IO.println("client checks where client uses server endpoint definition") *>
-      new ClientChecks[IO](backend, OrderEndpoints.validateServer).checklist
+      new ClientChecks[IO](backend, OrderEndpoints.Server.findOrder).checklist
 
   private def testWhereClientUsesSimplifiedDefinition(backend: SttpBackend[IO, Any]) = 
     separator *>
       IO.println("client checks where client uses client specific endpoint definition") *>
-      new ClientChecks[IO](backend, OrderEndpoints.validateClient).checklist
+      new ClientChecks[IO](backend, OrderEndpoints.Client.findOrder).checklist
   
   override def run(args: List[String]): IO[ExitCode] = {
     for {

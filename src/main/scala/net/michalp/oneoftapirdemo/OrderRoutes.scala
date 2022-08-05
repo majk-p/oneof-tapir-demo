@@ -39,7 +39,7 @@ class OrderRoutes[F[_]: Sync] {
       .pure[F]
 
   val validate = 
-    OrderEndpoints
-      .validateServer.serverSecurityLogic(securityLogic(_))
+    OrderEndpoints.Server
+      .findOrder.serverSecurityLogic(securityLogic(_))
       .serverLogic(_ => orderId => businessLogic(orderId))
 }
