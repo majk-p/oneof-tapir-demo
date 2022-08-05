@@ -26,15 +26,16 @@ import sttp.tapir.client.sttp.WebSocketToPipe
 
 import WebSocketToPipe.webSocketsNotSupported
 import sttp.tapir.Endpoint
+import OrderEndpoints.model.Error
 
-class ClientChecks[F[_]: MonadThrow](backend: SttpBackend[F, Any], validationRoute: Endpoint[String, String, OrderEndpoints.model.Error, List[Order], Any]) extends Checks[F] {
+class ClientChecks[F[_]: MonadThrow](backend: SttpBackend[F, Any], validationRoute: Endpoint[String, String, Error, Order, Any]) extends Checks[F] {
 
   private val validClient = Client.instance("secret", backend)(validationRoute)
   private val invalidClient = Client.instance("invalid", backend)(validationRoute)
 
   val verifyInvalidToken =
     invalidClient
-      .getUserOrders("someuser")
+      .getOrder("1")
       .attempt
       .map { result =>
         println(s"Result: $result")
@@ -44,7 +45,7 @@ class ClientChecks[F[_]: MonadThrow](backend: SttpBackend[F, Any], validationRou
 
   val verifyValidTokenInvalidUser =
     validClient
-      .getUserOrders("someuser")
+      .getOrder("999999")
       .attempt
       .map { result =>
         println(s"Result: $result")
@@ -55,12 +56,12 @@ class ClientChecks[F[_]: MonadThrow](backend: SttpBackend[F, Any], validationRou
 
   val verifyValidTokenValidUser =
     validClient
-      .getUserOrders("test")
+      .getOrder("1")
       .attempt
       .map { result =>
         println(s"Result: $result")
         assert(result.isRight)
-        assert(result == Right(Some(List(Order("1"), Order("2")))))
+        assert(result == Right(Some(Order("1"))))
         println("Successfully verified valid user")
       }
 
@@ -68,7 +69,7 @@ class ClientChecks[F[_]: MonadThrow](backend: SttpBackend[F, Any], validationRou
 }
 
 trait Client[F[_]] {
-  def getUserOrders(user: String): F[Option[List[Order]]]
+  def getOrder(id: String): F[Option[Order]]
 }
 
 object Client {
@@ -76,17 +77,17 @@ object Client {
     token: String,
     backend: SttpBackend[F, Any]
   )(
-    validationRoute: Endpoint[String, String, OrderEndpoints.model.Error, List[Order], Any]
+    validationRoute: Endpoint[String, String, Error, Order, Any]
   ): Client[F] =
     new Client[F] {
       val sttpClient = SttpClientInterpreter()
 
-      override def getUserOrders(user: String): F[Option[List[Order]]] = {
+      override def getOrder(id: String): F[Option[Order]] = {
         val requestBuilder = sttpClient.toSecureRequest(
           validationRoute,
           Some(uri"http://localhost:8080")
         )
-        val request = requestBuilder(token)(user)
+        val request = requestBuilder(token)(id)
         val result = backend.send(request)
         result.map(_.body).flatMap {
           case Value(Left(v: OrderEndpoints.model.Unauthorized)) =>

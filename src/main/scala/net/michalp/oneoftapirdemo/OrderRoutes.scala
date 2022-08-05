@@ -28,18 +28,18 @@ class OrderRoutes[F[_]: Sync] {
     Either.cond(token == onlyValidToken, (), Unauthorized("Failed") : Error).pure[F]
 
 
-  private val userOrders: Map[String, List[Order]] = Map (
-    "test" -> List(Order("1"), Order("2"))
+  private val orders: Map[String, Order] = Map (
+    "1" -> Order("1"), "2" -> Order("2")
   )
-
-  def businessLogic(user: String): F[Either[Error, List[Order]]] = 
+  
+  def businessLogic(orderId: String): F[Either[Error, Order]] = 
     Either
-      .fromOption(userOrders.get(user), NotFound)
+      .fromOption(orders.get(orderId), NotFound)
       .leftWiden[Error]
       .pure[F]
 
   val validate = 
     OrderEndpoints
       .validateServer.serverSecurityLogic(securityLogic(_))
-      .serverLogic(_ => user => businessLogic(user))
+      .serverLogic(_ => orderId => businessLogic(orderId))
 }

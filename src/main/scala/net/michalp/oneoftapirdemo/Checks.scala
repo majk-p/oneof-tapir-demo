@@ -27,7 +27,7 @@ trait Checks[F[_]] {
 object Checks extends Checks[IO]{
   private val backend: SttpBackend[Identity, Any] = HttpURLConnectionBackend()
 
-  private val baseUri = uri"http://localhost:8080/validate"
+  private val baseUri = uri"http://localhost:8080/order"
   private val request = basicRequest
     .response(asStringAlways)
 
@@ -36,7 +36,7 @@ object Checks extends Checks[IO]{
       request
         .auth
         .bearer("invalid")
-        .get(baseUri.addPath("someuser"))
+        .get(baseUri.addPath("1"))
         .send(backend)
     println(s"Response = ${result.body} Code = ${result.code}")
     assert(result.code.code == 403)
@@ -48,7 +48,7 @@ object Checks extends Checks[IO]{
       request
         .auth
         .bearer("secret")
-        .get(baseUri.addPath("someuser"))
+        .get(baseUri.addPath("99999"))
         .send(backend)
     println(s"Response = ${result.body} Code = ${result.code}")
     assert(result.code.code == 404)
@@ -60,7 +60,7 @@ object Checks extends Checks[IO]{
       request
         .auth
         .bearer("secret")
-        .get(baseUri.addPath("test"))
+        .get(baseUri.addPath("1"))
         .send(backend)
     println(s"Response = ${result.body} Code = ${result.code}")
     assert(result.code.code == 200)

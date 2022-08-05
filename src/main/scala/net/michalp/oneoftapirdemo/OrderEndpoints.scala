@@ -28,12 +28,12 @@ object OrderEndpoints {
   import model._
 
   val validateClient
-      : Endpoint[String, String, Error, List[Order], Any] =
+      : Endpoint[String, String, Error, Order, Any] =
     endpoint.get
       .securityIn(auth.bearer[String]())
-      .in("validate")
-      .in(path[String]("user"))
-      .out(jsonBody[List[Order]])
+      .in("order")
+      .in(path[String]("id"))
+      .out(jsonBody[Order])
       .errorOut(
         oneOf(
           notFoundStatus, // This seems to be wha'ts causing the issue
@@ -42,12 +42,12 @@ object OrderEndpoints {
       )
 
   val validateServer
-      : Endpoint[String, String, Error, List[Order], Any] =
+      : Endpoint[String, String, Error, Order, Any] =
     endpoint.get
       .securityIn(auth.bearer[String]())
-      .in("validate")
-      .in(path[String]("user"))
-      .out(jsonBody[List[Order]])
+      .in("order")
+      .in(path[String]("id"))
+      .out(jsonBody[Order])
       .errorOut(
         oneOf(notFoundJson, unauthorized)
       )
