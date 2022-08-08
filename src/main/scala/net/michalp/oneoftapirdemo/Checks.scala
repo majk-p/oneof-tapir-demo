@@ -39,7 +39,7 @@ object Checks extends Checks[IO]{
         .get(baseUri.addPath("1"))
         .send(backend)
     println(s"Response = ${result.body} Code = ${result.code}")
-    assert(result.code.code == 403)
+    require(result.code.code == 403)
     println("Successfully verified invalid token")
   }
 
@@ -51,8 +51,8 @@ object Checks extends Checks[IO]{
         .get(baseUri.addPath("99999"))
         .send(backend)
     println(s"Response = ${result.body} Code = ${result.code}")
-    assert(result.code.code == 404)
-    println("Successfully verified invalid user")
+    require(result.code.code == 404)
+    println("Successfully verified invalid order")
   }
 
   val verifyValidTokenAndOrder = IO {
@@ -63,10 +63,10 @@ object Checks extends Checks[IO]{
         .get(baseUri.addPath("1"))
         .send(backend)
     println(s"Response = ${result.body} Code = ${result.code}")
-    assert(result.code.code == 200)
-    println("Successfully verified valid user")
+    require(result.code.code == 200)
+    println("Successfully verified valid order")
   }
 
-  val checklist = verifyInvalidToken *> verifyValidTokenInvalidOrder *> verifyValidTokenAndOrder
+  val checklist = (verifyValidTokenInvalidOrder *> verifyValidTokenAndOrder *> verifyInvalidToken).handleError(println)
 
 }

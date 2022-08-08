@@ -20,15 +20,14 @@ import cats.MonadThrow
 import cats.implicits._
 import eu.timepit.refined.auto._
 import sttp.client3._
-import sttp.tapir.DecodeResult.Value
 import sttp.tapir.client.sttp.SttpClientInterpreter
 import sttp.tapir.client.sttp.WebSocketToPipe
 
 import WebSocketToPipe.webSocketsNotSupported
 import sttp.tapir.Endpoint
-import OrderEndpoints.model.Error
+import OrderEndpoints.model._
 
-class ClientChecks[F[_]: MonadThrow](backend: SttpBackend[F, Any], validationRoute: Endpoint[String, String, Error, Order, Any]) extends Checks[F] {
+class ClientChecks[F[_]: MonadThrow, E <: Error](backend: SttpBackend[F, Any], validationRoute: Endpoint[String, String, E, Order, Any]) extends Checks[F] {
 
   private val validClient = Client.instance("secret", backend)(validationRoute)
   private val invalidClient = Client.instance("invalid", backend)(validationRoute)
@@ -36,67 +35,56 @@ class ClientChecks[F[_]: MonadThrow](backend: SttpBackend[F, Any], validationRou
   val verifyInvalidToken =
     invalidClient
       .getOrder("1")
-      .attempt
       .map { result =>
         println(s"Result: $result")
-        assert(result.isLeft)
+        require(result == Left(Unauthorized("Failed")))
         println("Successfully verified invalid token")
       }
 
   val verifyValidTokenInvalidOrder =
     validClient
       .getOrder("999999")
-      .attempt
       .map { result =>
         println(s"Result: $result")
-        assert(result.isRight)
-        assert(result == Right(None))
-        println("Successfully verified invalid user")
+        require(result == Left(NotFound))
+        println("Successfully verified invalid order")
       }
 
   val verifyValidTokenAndOrder =
     validClient
       .getOrder("1")
-      .attempt
       .map { result =>
         println(s"Result: $result")
-        assert(result.isRight)
-        assert(result == Right(Some(Order("1"))))
-        println("Successfully verified valid user")
+        require(result == Right(Order("1")))
+        println("Successfully verified valid order")
       }
 
-  val checklist = verifyInvalidToken *> verifyValidTokenInvalidOrder *> verifyValidTokenAndOrder
+    val checklist = 
+      (verifyValidTokenInvalidOrder *> verifyValidTokenAndOrder *> verifyInvalidToken)
+        .handleError(error => println(s"${Console.RED}$error${Console.RESET}"))
 }
 
 trait Client[F[_]] {
-  def getOrder(id: String): F[Option[Order]]
+  def getOrder(id: String): F[Either[Error, Order]]
 }
 
 object Client {
-  def instance[F[_]: MonadThrow](
+  def instance[F[_]: MonadThrow, E <: Error](
     token: String,
     backend: SttpBackend[F, Any]
   )(
-    validationRoute: Endpoint[String, String, Error, Order, Any]
+    validationRoute: Endpoint[String, String, E, Order, Any]
   ): Client[F] =
     new Client[F] {
       val sttpClient = SttpClientInterpreter()
 
-      override def getOrder(id: String): F[Option[Order]] = {
-        val requestBuilder = sttpClient.toSecureRequest(
+      override def getOrder(id: String): F[Either[Error, Order]] = {
+        val requestBuilder = sttpClient.toSecureClientThrowDecodeFailures(
           validationRoute,
-          Some(uri"http://localhost:8080")
+          Some(uri"http://localhost:8080"),
+          backend
         )
-        val request = requestBuilder(token)(id)
-        val result = backend.send(request)
-        result.map(_.body).flatMap {
-          case Value(Left(v: OrderEndpoints.model.Unauthorized)) =>
-            MonadThrow[F].raiseError(new Exception(s"Error $v"))
-          case Value(v) =>
-            v.toOption.pure[F]
-          case result =>
-            MonadThrow[F].raiseError(new Exception(s"failed to decode response: $result"))
-        }
+        requestBuilder(token)(id).map(_.leftWiden)
       }
 
     }

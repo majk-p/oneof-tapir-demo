@@ -52,6 +52,18 @@ object OrderEndpoints {
             unauthorized
           )
         )
+
+    val findOrderWithSingleError: Endpoint[String, String, NotFound.type, Order, Any] =
+      endpoint.get
+        .securityIn(auth.bearer[String]())
+        .in("order")
+        .in(path[String]("id"))
+        .out(jsonBody[Order])
+        .errorOut(
+          oneOf(
+            notFoundStatus
+          )
+        )
   }
 
 
