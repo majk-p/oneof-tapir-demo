@@ -21,7 +21,7 @@ lazy val Versions = new {
   val cats = "2.8.0"
   val catsEffect = "3.3.12"
   val circe = "0.14.2"
-  val tapir = "1.0.1"
+  val tapir = "1.0.4"
   val http4s = "0.23.12"
   val sttp = "3.7.2"
 }
